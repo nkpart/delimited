@@ -42,6 +42,8 @@ _TextData = prism' (\(TextData c) -> c) (\c -> if f c then Just (TextData c) els
             || c == chr 0x21
             || (c >= chr 0x23 && c <= chr 0x2B)
             || (c >= chr 0x2D && c <= chr 0x7E)
+  -- As specified in the RFC:
+  -- !#$%&'()*+-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~
   -- oneOf $ fmap chr ([0x20, 0x21] <> [0x23..0x2B] <> [0x2D..0x7E])
 
 data Record =
@@ -91,8 +93,6 @@ nonEscapedP = many (TextDataC <$> textDataP)
 
 textDataP :: (Monad m, CharParsing m) => m TextData
 textDataP =
-  -- As specified in the RFC:
-  -- !#$%&'()*+-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~
   try $
   do c <- anyChar
      filterP (^? _TextData) ("Invalid csv character: " <> pure c ) c
