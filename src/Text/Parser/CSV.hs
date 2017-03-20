@@ -24,24 +24,36 @@ data EOL
   | LF
   deriving (Eq, Show)
 
-data Field =
-    Quoted Char [CSVChar]
+data Field
+  = Quoted Char
+           [CSVChar]
   | Unquoted [CSVChar]
   deriving (Eq, Show)
 
-data CSVChar =
-  TextDataC TextData
-  | Comma' | CR' | LF'
+data CSVChar
+  = TextDataC TextData
+  | Comma'
+  | CR'
+  | LF'
   deriving (Eq, Show)
 
-newtype TextData = TextData Char deriving (Eq, Show)
+newtype TextData =
+  TextData Char
+  deriving (Eq, Show)
 
 _TextData :: Prism' Char TextData
-_TextData = prism' (\(TextData c) -> c) (\c -> if f c then Just (TextData c) else Nothing)
-  where f c = c == chr 0x20
-            || c == chr 0x21
-            || (c >= chr 0x23 && c <= chr 0x2B)
-            || (c >= chr 0x2D && c <= chr 0x7E)
+_TextData =
+  prism'
+    (\(TextData c) -> c)
+    (\c ->
+       if f c
+         then Just (TextData c)
+         else Nothing)
+  where
+    f c =
+      c == chr 0x20 ||
+      c == chr 0x21 ||
+      (c >= chr 0x23 && c <= chr 0x2B) || (c >= chr 0x2D && c <= chr 0x7E)
   -- As specified in the RFC:
   -- !#$%&'()*+-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~
   -- oneOf $ fmap chr ([0x20, 0x21] <> [0x23..0x2B] <> [0x2D..0x7E])
@@ -61,9 +73,9 @@ printCsv (CSV records) = toList records >>= printRecord
     printField (Quoted q content) = q : fmap printCSVChar content <> [q]
     printField (Unquoted content) = fmap printCSVChar content
     printCSVChar (TextDataC textdata) = _TextData # textdata
-    printCSVChar Comma' = ','
-    printCSVChar CR' = '\r'
-    printCSVChar LF' = '\n'
+    printCSVChar Comma'               = ','
+    printCSVChar CR'                  = '\r'
+    printCSVChar LF'                  = '\n'
 
 fileP
   :: (Monad m, CharParsing m)
@@ -100,7 +112,7 @@ textDataP =
 filterP :: Monad f => (t -> Maybe a) -> String -> t -> f a
 filterP f msg z =
      case f z of
-       Just v -> pure v
+       Just v  -> pure v
        Nothing -> fail msg
 
 dquoteP :: CharParsing m => m Char
