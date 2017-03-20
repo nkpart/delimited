@@ -18,6 +18,10 @@ data CSV =
   CSV (NonEmpty (Record, EOL))
   deriving (Eq, Show)
 
+data Record =
+  Record (NonEmpty Field)
+  deriving (Eq, Show)
+
 data EOL
   = CRLF
   | CR
@@ -57,10 +61,6 @@ _TextData =
   -- As specified in the RFC:
   -- !#$%&'()*+-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~
   -- oneOf $ fmap chr ([0x20, 0x21] <> [0x23..0x2B] <> [0x2D..0x7E])
-
-data Record =
-  Record (NonEmpty Field)
-  deriving (Eq, Show)
 
 printCsv :: CSV -> String
 printCsv (CSV records) = toList records >>= printRecord
