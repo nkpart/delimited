@@ -24,13 +24,7 @@ customFileP rowP =
   let xxx = runMe rowP
   in
   do _ <- headerP <* crlfP <?> "header"
-     rs <- sepEndBy1 xxx crlfP <?> "records"
-     pure rs
-     -- TODO: this is a hack to deal with a trailing newline
-     -- let rs' = reverse rs
-     -- case rs' of
-     --   ([""]: rest) -> pure (h: reverse rest)
-     --   _            -> pure (h: reverse rs)
+     sepEndBy1 xxx crlfP <?> "records"
 
 -- | Interleave ',' parsing between sequenced parsers
 runMe :: (Monad f, TokenParsing f ) => Ap f a -> f a
