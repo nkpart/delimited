@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# OPTIONS_GHC -Wall #-}
 module Text.Parser.CSV where
 
 import           Control.Applicative

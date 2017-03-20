@@ -3,7 +3,6 @@ module Main where
 import Text.Parser.CSV
 import Text.Trifecta
 import System.Environment
-import System.Console.Terminfo.PrettyPrint
 
 main :: IO ()
 main =

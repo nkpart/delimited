@@ -23,7 +23,7 @@ customFileP
 customFileP rowP =
   let xxx = runMe rowP
   in
-  do h <- headerP <* crlfP <?> "header"
+  do _ <- headerP <* crlfP <?> "header"
      rs <- sepEndBy1 xxx crlfP <?> "records"
      pure rs
      -- TODO: this is a hack to deal with a trailing newline
@@ -39,19 +39,14 @@ runMe (Ap fa fa2b) =
   do a <- fa
      case fa2b of
        Pure cont -> pure (cont a)
-       x@(Ap fr cont) ->
-         do char ','
+       Ap fr cont ->
+         do _ <- char ','
             r <- fr
             xxx <- runMe cont
             pure $ xxx r a
 
 field :: f a -> Ap f a
-field fp = liftAp fp
-
-fooooP =
-  do a <- field $ integer
-     b <- field $ integer
-     pure $ Foo a b
+field = liftAp
 
 recordP :: CharParsing m => m [String]
 recordP =
