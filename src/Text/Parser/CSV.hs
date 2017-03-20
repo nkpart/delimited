@@ -31,7 +31,7 @@ data EOL
 data Field
   = Quoted Char
            [CSVChar]
-  | Unquoted [CSVChar]
+  | Unquoted [TextData]
   deriving (Eq, Show)
 
 data CSVChar
@@ -39,6 +39,7 @@ data CSVChar
   | Comma'
   | CR'
   | LF'
+  | DQuote
   deriving (Eq, Show)
 
 newtype TextData =
@@ -70,12 +71,13 @@ printCsv (CSV records) = toList records >>= printRecord
     printEol CRLF = "\r\n"
     printEol CR   = "\r"
     printEol LF   = "\n"
-    printField (Quoted q content) = q : fmap printCSVChar content <> [q]
-    printField (Unquoted content) = fmap printCSVChar content
-    printCSVChar (TextDataC textdata) = _TextData # textdata
-    printCSVChar Comma'               = ','
-    printCSVChar CR'                  = '\r'
-    printCSVChar LF'                  = '\n'
+    printField (Quoted q content) = q : (=<<) printCSVChar content <> [q]
+    printField (Unquoted content) = fmap (_TextData #) content
+    printCSVChar (TextDataC textdata) = pure $ _TextData # textdata
+    printCSVChar DQuote = "\"\""
+    printCSVChar Comma'               = pure ','
+    printCSVChar CR'                  = pure '\r'
+    printCSVChar LF'                  = pure '\n'
 
 fileP
   :: (Monad m, CharParsing m)
@@ -98,10 +100,16 @@ fieldP :: (CharParsing f, Monad f) => f Field
 fieldP = (Quoted '"' <$> escapedP) <|> (Unquoted <$> nonEscapedP)
 
 escapedP :: (Monad f, CharParsing f) => f [CSVChar]
-escapedP = dquoteP *> many ((TextDataC <$> textDataP) <|> (Comma' <$ commaP ) <|> (CR' <$ crP ) <|> (LF' <$ lfP )) <* dquoteP
+escapedP =
+  dquoteP *>
+  many ((TextDataC <$> textDataP) <|> (Comma' <$ commaP) <|> (CR' <$ crP) <|> (LF' <$ lfP) <|> (DQuote <$ quoteQuote)) <*
+  dquoteP
 
-nonEscapedP :: (CharParsing f, Monad f) => f [CSVChar]
-nonEscapedP = many (TextDataC <$> textDataP)
+quoteQuote :: CharParsing m => m String
+quoteQuote = string "\"\""
+
+nonEscapedP :: (CharParsing f, Monad f) => f [TextData]
+nonEscapedP = many textDataP
 
 textDataP :: (Monad m, CharParsing m) => m TextData
 textDataP =

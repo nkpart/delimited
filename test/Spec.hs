@@ -7,7 +7,7 @@ import Control.Monad
 import Text.Parser.CSV
 
 testy :: String
-testy =  "age,name\r\n33,nick\r\n33,\"mark\ncuban\"\r\n"
+testy =  "age,name\r\n33,nick\r\n33,\"mark\"\"\ncuban\"\r\n"
 
 -- data P = P Integer String deriving (Eq, Show)
 -- pp :: RecordParser P
