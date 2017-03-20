@@ -1,6 +1,23 @@
 resolver: lts-8.4
 packages:
 - '.'
-extra-deps: []
+extra-deps:
+  - separated-0.1.2
+  - papa-0.2.1
+  - papa-base-0.2.0
+  - papa-base-export-0.2.0
+  - papa-base-implement-0.2.0
+  - papa-bifunctors-0.2.0
+  - papa-bifunctors-export-0.2.0
+  - papa-bifunctors-implement-0.2.0
+  - papa-export-0.2.1
+  - papa-implement-0.2.2
+  - papa-lens-0.2.0
+  - papa-lens-export-0.2.0
+  - papa-lens-implement-0.2.1
+  - papa-semigroupoids-0.2.0
+  - papa-semigroupoids-export-0.2.0
+  - papa-semigroupoids-implement-0.2.1
+
 flags: {}
 extra-package-dbs: []

@@ -41,7 +41,3 @@ runMe (Ap fa fa2b) =
 
 field :: f a -> Ap f a
 field = liftAp
-
-recordP :: CharParsing m => m [String]
-recordP =
-  sepBy1 fieldP commaP

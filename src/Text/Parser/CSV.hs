@@ -4,41 +4,70 @@ module Text.Parser.CSV where
 
 import           Control.Applicative
 import           Data.Char
+import           Data.Functor
+import           Data.List
 import           Data.Monoid
 import           Text.Parser.Char
 import           Text.Parser.Combinators
 
---  https://tools.ietf.org/html/rfc4180#page-2
+-- https://tools.ietf.org/html/rfc4180#page-2
 
--- TODO: cassava parses newlines as either \n, \r\n or \r. This might be a good choice.
+data CSV =
+  CSV [(Record, EOL)]
+  deriving (Eq, Show)
+
+data EOL
+  = CRLF
+  | CR
+  | LF
+  deriving (Eq, Show)
+
+data Field =
+  Field (Maybe Char)
+        String
+  deriving (Eq, Show)
+
+data Record =
+  Record [Field]
+  deriving (Eq, Show)
+
+printCsv :: CSV -> String
+printCsv (CSV records) = records >>= printRecord
+  where
+    printRecord (Record fields, eol) =
+      intercalate "," (fmap printField fields) <> printEol eol
+    printEol CRLF = "\r\n"
+    printEol CR   = "\r"
+    printEol LF   = "\n"
+    printField (Field quote content) =
+      case quote of
+        Just q  -> q : content <> [q]
+        Nothing -> content
 
 fileP
   :: (Monad m, CharParsing m) =>
-     m [[String]]
+     m CSV
 fileP =
-  do h <- headerP <* crlfP
-     rs <- sepEndBy1 recordP crlfP
+  do h <- (,) <$> headerP <*> newlineP
+     rs <- many ((,) <$> recordP <*> newlineP)
      -- TODO: this is a hack to deal with a trailing newline
-     let rs' = reverse rs
-     case rs' of
-       ([""]: rest) -> pure (h: reverse rest)
-       _            -> pure (h: reverse rs)
+     pure $ CSV (h: rs)
 
-headerP :: CharParsing m => m [[Char]]
+headerP :: CharParsing m => m Record
 headerP =
-  sepBy1 nameP commaP
+  Record <$> sepBy1 nameP commaP
 
-recordP :: CharParsing m => m [[Char]]
+recordP :: CharParsing m => m Record
 recordP =
-  sepBy1 fieldP commaP
+  Record <$> sepBy1 fieldP commaP
 
-nameP :: CharParsing f => f [Char]
+nameP :: CharParsing f => f Field
 nameP =
   fieldP
 
-fieldP :: CharParsing f => f [Char]
+fieldP :: CharParsing f => f Field
 fieldP =
-  escapedP <|> nonEscapedP
+  (Field (Just '"') <$> escapedP) <|> ( Field Nothing <$> nonEscapedP )
 
 escapedP :: CharParsing f => f [Char]
 escapedP =
@@ -67,6 +96,9 @@ lfP = char' 0x0A
 
 crlfP :: CharParsing f => f Char
 crlfP = crP *> lfP
+
+newlineP :: CharParsing f => f EOL
+newlineP = (try crlfP $> CRLF) <|> (crP $> CR) <|> (lfP $> LF)
 
 char' :: CharParsing m => Int -> m Char
 char' = char . chr
