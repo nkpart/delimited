@@ -11,6 +11,7 @@ import           Data.List.NonEmpty
 import           Data.Monoid
 import           Text.Parser.Char
 import           Text.Parser.Combinators
+import           Text.Trifecta
 
 -- https://tools.ietf.org/html/rfc4180#page-2
 
@@ -74,7 +75,7 @@ printCsv (CSV records) = toList records >>= printRecord
     printField (Quoted q content) = q : (=<<) printCSVChar content <> [q]
     printField (Unquoted content) = fmap (_TextData #) content
     printCSVChar (TextDataC textdata) = pure $ _TextData # textdata
-    printCSVChar DQuote = "\"\""
+    printCSVChar DQuote               = "\"\""
     printCSVChar Comma'               = pure ','
     printCSVChar CR'                  = pure '\r'
     printCSVChar LF'                  = pure '\n'
@@ -115,13 +116,11 @@ textDataP :: (Monad m, CharParsing m) => m TextData
 textDataP =
   try $
   do c <- anyChar
-     filterP (^? _TextData) ("Invalid csv character: " <> pure c ) c
+     filterP (c ^? _TextData) ("Invalid csv character: " <> pure c )
 
-filterP :: Monad f => (t -> Maybe a) -> String -> t -> f a
-filterP f msg z =
-     case f z of
-       Just v  -> pure v
-       Nothing -> fail msg
+filterP :: Monad f => Maybe a -> String -> f a
+filterP z msg =
+  maybe (fail msg) pure z
 
 dquoteP :: CharParsing m => m Char
 dquoteP = char' 0x22
