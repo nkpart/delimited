@@ -20,7 +20,7 @@ data CSV =
   deriving (Eq, Show)
 
 data Record =
-  Record (NonEmpty Field)
+  Record (NonEmpty (Spanned Field))
   deriving (Eq, Show)
 
 data EOL
@@ -35,6 +35,16 @@ data Field
   | Unquoted [TextData]
   deriving (Eq, Show)
 
+fieldS :: Field -> String
+fieldS (Quoted _ cs) =
+  let f (TextDataC td) = _TextData # td
+      f (Comma')       = ','
+      f (CR')          = '\r'
+      f (LF')          = '\n'
+      f DQuote         = '"'
+   in fmap f cs
+fieldS (Unquoted tds) = fmap (_TextData #) tds
+
 data CSVChar
   = TextDataC TextData
   | Comma'
@@ -42,6 +52,7 @@ data CSVChar
   | LF'
   | DQuote
   deriving (Eq, Show)
+
 
 newtype TextData =
   TextData Char
@@ -72,8 +83,8 @@ printCsv (CSV records) = toList records >>= printRecord
     printEol CRLF = "\r\n"
     printEol CR   = "\r"
     printEol LF   = "\n"
-    printField (Quoted q content) = q : (=<<) printCSVChar content <> [q]
-    printField (Unquoted content) = fmap (_TextData #) content
+    printField (Quoted q content :~ _) = q : (=<<) printCSVChar content <> [q]
+    printField (Unquoted content :~ _) = fmap (_TextData #) content
     printCSVChar (TextDataC textdata) = pure $ _TextData # textdata
     printCSVChar DQuote               = "\"\""
     printCSVChar Comma'               = pure ','
@@ -81,24 +92,24 @@ printCsv (CSV records) = toList records >>= printRecord
     printCSVChar LF'                  = pure '\n'
 
 fileP
-  :: (Monad m, CharParsing m)
+  :: (Monad m, DeltaParsing m)
   => m CSV
 fileP = do
   h <- (,) <$> headerP <*> newlineP
   rs <- many ((,) <$> recordP <*> newlineP)
   pure $ CSV (h :| rs)
 
-headerP :: (CharParsing f, Monad f) => f Record
+headerP :: DeltaParsing f => f Record
 headerP = Record <$> sepBy1NE nameP commaP
 
-recordP :: (Monad f, CharParsing f) => f Record
+recordP :: DeltaParsing f => f Record
 recordP = Record <$> sepBy1NE fieldP commaP
 
-nameP :: (Monad f, CharParsing f) => f Field
+nameP :: DeltaParsing m => m (Spanned Field)
 nameP = fieldP
 
-fieldP :: (CharParsing f, Monad f) => f Field
-fieldP = (Quoted '"' <$> escapedP) <|> (Unquoted <$> nonEscapedP)
+fieldP :: DeltaParsing m => m (Spanned Field)
+fieldP = spanned $ (Quoted '"' <$> escapedP) <|> (Unquoted <$> nonEscapedP)
 
 escapedP :: (Monad f, CharParsing f) => f [CSVChar]
 escapedP =
@@ -114,9 +125,10 @@ nonEscapedP = many textDataP
 
 textDataP :: (Monad m, CharParsing m) => m TextData
 textDataP =
-  try $
+  try (
   do c <- anyChar
      filterP (c ^? _TextData) ("Invalid csv character: " <> pure c )
+  ) <?> "textdata"
 
 filterP :: Monad f => Maybe a -> String -> f a
 filterP z msg =
