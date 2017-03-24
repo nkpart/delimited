@@ -16,8 +16,6 @@ library
   hs-source-dirs:      src
   exposed-modules:     Text.Delimited.CSV
                      , Text.Delimited.CSV.Parser
-                     -- TODO: what to do with this
-                     , Text.Parser.CSV.Record
   build-depends:       base >= 4.7 && < 5
                      , parsers
                      , streaming
@@ -33,7 +31,7 @@ executable csv-ok
   default-language:    Haskell2010
   main-is:             CsvOk.hs
   build-depends:       base
-                     , parsers-csv
+                     , delimited
                      , trifecta
                      , free
                      , wl-pprint-terminfo
@@ -43,7 +41,7 @@ test-suite parsers-csv-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
-                     , parsers-csv
+                     , delimited
                      , trifecta
                      , streaming
                      , mtl
