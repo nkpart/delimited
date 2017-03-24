@@ -27,13 +27,13 @@ data EOL
   deriving (Eq, Show)
 
 data Field
-  = Quoted Char
-           [QuotedData]
+  = Quoted [QuotedData]
   | Unquoted [TextData]
   deriving (Eq, Show)
 
+-- | Extract un-escaped field content
 fieldContent :: Field -> String
-fieldContent (Quoted _ cs) =
+fieldContent (Quoted cs) =
   let f (TextDataC td) = _TextData # td
       f Comma'         = ','
       f CR'            = '\r'
@@ -70,15 +70,17 @@ _TextData =
       c == '!' ||
       (c >= '#' && c <= '+') || (c >= '-' && c <= '~')
 
-printCsv :: CSV -> String
-printCsv (CSV records) = toList records >>= printRecord
+-- | Render CSV
+-- Should obey: `renderCSV . parseCSV ≅ id`
+renderCsv :: CSV -> String
+renderCsv (CSV records) = toList records >>= printRecord
   where
     printRecord (Record (fields :~ _), eol) =
       intercalate "," (toList $ fmap printField fields) <> printEol eol
     printEol CRLF = "\r\n"
     printEol CR   = "\r"
     printEol LF   = "\n"
-    printField (Quoted q content :~ _) = q : (=<<) printQuotedData content <> [q]
+    printField (Quoted content :~ _) = '"' : (=<<) printQuotedData content <> ['"']
     printField (Unquoted content :~ _) = fmap (_TextData #) content
     printQuotedData (TextDataC textdata) = pure $ _TextData # textdata
     printQuotedData DoubleQuote               = "\"\""

@@ -19,8 +19,8 @@ main :: IO ()
 main =
   do let T.Success csv@(CSV (_:|rs)) = T.parseString fileP mempty testy
      print rs
-     when (printCsv csv /= testy) $ do
-       putStrLn (printCsv csv)
+     when (renderCsv csv /= testy) $ do
+       putStrLn (renderCsv csv)
        error "print . parse /= id"
      when (length rs /= 2) $ do
        error "record parse count fail"

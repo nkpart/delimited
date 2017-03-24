@@ -34,7 +34,7 @@ nameP :: (Monad f, CharParsing f) => f Field
 nameP = field
 
 field :: (CharParsing f, Monad f) => f Field
-field = (Quoted '"' <$> escapedP) <|> (Unquoted <$> nonEscapedP)
+field = (Quoted <$> escapedP) <|> (Unquoted <$> nonEscapedP)
 
 escapedP :: (Monad f, CharParsing f) => f [QuotedData]
 escapedP =
