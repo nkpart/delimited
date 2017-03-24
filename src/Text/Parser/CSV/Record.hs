@@ -7,8 +7,8 @@
 {-# LANGUAGE DeriveAnyClass #-}
 module Text.Parser.CSV.Record where
 
-import Text.Parser.CSV
-import Text.Parser.Char
+import Text.Delimited.CSV.Parser
+import Text.Delimited.CSV
 import Text.Parser.Combinators
 import Text.Trifecta
 import Control.Monad (join)
@@ -19,13 +19,13 @@ recordsWithHeader
      (Record -> Ap Parser a) ->
      m [a]
 recordsWithHeader rowP =
-  do h <- headerP <* crlfP  <?> "header"
-     sepEndBy1 (parseRow (rowP h)) crlfP <?> "records"
+  do h <- headerP <* newlineP  <?> "header"
+     many $ (parseRow (rowP h)) <* newlineP <?> "records"
 
 parseRow :: (Errable f, DeltaParsing f ) => Ap Parser a -> f a
-parseRow ap =
-  let xxx = parseWithin (fieldS . (\(a :~ _) -> a) <$> fieldP)
-   in interleaveAp (char ',') $ hoistAp xxx ap
+parseRow =
+  let xxx = parseWithin (fieldContent <$> field)
+   in interleaveAp commaP . hoistAp xxx
 
 -- | Run the second parser on the content parsed by the first
 parseWithin :: (Errable m, DeltaParsing m ) => m String -> Parser b -> m b

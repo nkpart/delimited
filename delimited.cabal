@@ -1,4 +1,4 @@
-name:                parsers-csv
+name:                delimited
 version:             0.1.0.0
 homepage:            https://github.com/nkpart/parsers-csv
 license:             BSD3
@@ -14,7 +14,9 @@ cabal-version:       >=1.10
 library
   ghc-options:         -Wall -Werror
   hs-source-dirs:      src
-  exposed-modules:     Text.Parser.CSV
+  exposed-modules:     Text.Delimited.CSV
+                     , Text.Delimited.CSV.Parser
+                     -- TODO: what to do with this
                      , Text.Parser.CSV.Record
   build-depends:       base >= 4.7 && < 5
                      , parsers

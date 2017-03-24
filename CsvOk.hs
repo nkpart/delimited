@@ -1,6 +1,6 @@
 module Main where
 
-import Text.Parser.CSV
+import Text.Delimited.CSV.Parser
 import Text.Trifecta
 import System.Environment
 

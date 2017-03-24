@@ -7,7 +7,8 @@ import qualified Text.Trifecta as T
 import Control.Lens ()
 import Control.Monad
 import Control.Applicative.Free
-import Text.Parser.CSV
+import Text.Delimited.CSV.Parser
+import Text.Delimited.CSV
 import Text.Parser.CSV.Record
 import Text.Trifecta
 import Data.List.NonEmpty hiding (length)
