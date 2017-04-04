@@ -23,15 +23,20 @@ fileP
   :: (Monad m, DeltaParsing m)
   => m CSV
 fileP = do
-  h <- (,) <$> headerP <*> newlineP
-  rs <- many ((,) <$> recordP <*> newlineP)
+  h <- headerP
+  rs <- many recordP
   pure $ csvRows # (h :| rs)
 
 headerP :: DeltaParsing f => f Record
-headerP = review recordFields  <$> spanned (sepBy1NE (spanned nameP) commaP)
+headerP =
+     makeRecord <$> spanned (sepBy1NE (spanned nameP) commaP) <*> newlineP
 
 recordP :: DeltaParsing f => f Record
-recordP = review recordFields <$> spanned (sepBy1NE (spanned field) commaP)
+recordP =
+     makeRecord <$> spanned (sepBy1NE (spanned nameP) commaP) <*> newlineP
+
+makeRecord :: Spanned (NonEmpty (Spanned Field)) -> EOL -> Record
+makeRecord (fields :~ sp) eol = Record sp (fmap (\(fld :~ s) -> (s, fld)) fields) eol
 
 nameP :: (Monad f, CharParsing f) => f Field
 nameP = field

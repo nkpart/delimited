@@ -2,11 +2,11 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TemplateHaskell           #-}
 module Text.Delimited.CSV
   (
     CSV, csvRows,
-    Record, recordFields,
+    Record(Record), recordSpan, recordFields, recordEOL,
     EOL, _CRLF, _CR, _LF,
     Field, _Quoted, _Unquoted,
     QuotedData, _TextDataC, _Comma', _CR', _LF', _DoubleQuote,
@@ -22,9 +22,9 @@ import           Data.Monoid        ((<>))
 import           Prelude            (Eq, Show)
 import           Prelude            (Char, String)
 import           Prelude            (Maybe (Just, Nothing))
-import           Prelude            (fmap, pure, (=<<), (>>=), ($))
+import           Prelude            (fmap, pure, ($), (=<<), (>>=))
 import           Prelude            ((&&), (<=), (==), (>=), (||))
-import           Text.Trifecta      (Spanned ((:~)))
+import           Text.Trifecta      (Span)
 
 -- https://tools.ietf.org/html/rfc4180#page-2
 
@@ -32,11 +32,11 @@ import           Text.Trifecta      (Spanned ((:~)))
 -- >>> import Data.Char (chr)
 
 newtype CSV =
-  CSV { _csvRows :: NonEmpty (Record, EOL) }
+  CSV { _csvRows :: NonEmpty Record }
   deriving (Eq, Show)
 
-newtype Record =
-  Record { _recordFields :: Spanned (NonEmpty (Spanned Field)) }
+data Record =
+  Record { _recordSpan :: Span,  _recordFields :: NonEmpty (Span, Field), _recordEOL :: EOL }
   deriving (Eq, Show)
 
 data EOL
@@ -107,13 +107,13 @@ fieldContent (Unquoted tds) = fmap (_TextData #) tds
 renderCsv :: CSV -> String
 renderCsv (CSV records) = toList records >>= printRecord
   where
-    printRecord (Record (fields :~ _), eol) =
+    printRecord (Record _ fields eol) =
       intercalate "," (toList $ fmap printField fields) <> printEol eol
     printEol CRLF = "\r\n"
     printEol CR   = "\r"
     printEol LF   = "\n"
-    printField (Quoted content :~ _) = '"' : (=<<) printQuotedData content <> ['"']
-    printField (Unquoted content :~ _) = fmap (_TextData #) content
+    printField (_, Quoted content) = '"' : (=<<) printQuotedData content <> ['"']
+    printField (_, Unquoted content) = fmap (_TextData #) content
     printQuotedData (TextDataC textdata) = pure $ _TextData # textdata
     printQuotedData DoubleQuote          = "\"\""
     printQuotedData Comma'               = pure ','

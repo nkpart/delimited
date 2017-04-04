@@ -23,6 +23,7 @@ library
                      , trifecta
                      , free
                      , lens
+                     , charset
                      -- , separated
   default-language:    Haskell2010
 

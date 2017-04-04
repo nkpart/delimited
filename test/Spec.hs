@@ -18,12 +18,13 @@ testy =  "age,name\r\n23,nick\r\n33,\"mark\"\"\ncuban\"\r\n"
 main :: IO ()
 main =
   do let v = T.parseString fileP mempty testy
-     let (_ :| rs) = v ^?! _Success . csvRows
+     let (_h :| rs) = v ^?! _Success . csvRows
          csv = v ^?! _Success
+     -- print h
+     -- print $ explain (render (from recordFields # h)) (failed "blah")
      when (renderCsv csv /= testy) $ do
        putStrLn (renderCsv csv)
        error "print . parse /= id"
      when (length rs /= 2) $ do
        error "record parse count fail"
-
      pure ()
