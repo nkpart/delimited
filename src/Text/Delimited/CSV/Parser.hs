@@ -14,6 +14,9 @@ import           Text.Parser.Char
 import           Text.Parser.Combinators
 import           Text.Trifecta
 
+-- $setup
+-- >>>
+
 -- https://tools.ietf.org/html/rfc4180#page-2
 
 fileP
@@ -22,31 +25,32 @@ fileP
 fileP = do
   h <- (,) <$> headerP <*> newlineP
   rs <- many ((,) <$> recordP <*> newlineP)
-  pure $ CSV (h :| rs)
+  pure $ csvRows # (h :| rs)
 
 headerP :: DeltaParsing f => f Record
-headerP = Record <$> spanned (sepBy1NE (spanned nameP) commaP)
+headerP = review recordFields  <$> spanned (sepBy1NE (spanned nameP) commaP)
 
 recordP :: DeltaParsing f => f Record
-recordP = Record <$> spanned (sepBy1NE (spanned field) commaP)
+recordP = review recordFields <$> spanned (sepBy1NE (spanned field) commaP)
 
 nameP :: (Monad f, CharParsing f) => f Field
 nameP = field
 
+-- |
+-- >>> parseTest (fieldContent <$> field) "\"this, is fine\""
+-- "this, is fine"
+-- >>> parseTest (fieldContent <$> field) "this is fine"
+-- "this is fine"
 field :: (CharParsing f, Monad f) => f Field
-field = (Quoted <$> escapedP) <|> (Unquoted <$> nonEscapedP)
+field = ((_Quoted #) <$> escapedP) <|> ((_Unquoted #) <$> nonEscapedP)
 
 escapedP :: (Monad f, CharParsing f) => f [QuotedData]
 escapedP =
   char '"' *>
   many
-    ((TextDataC <$> textDataP) <|> (Comma' <$ commaP) <|> (CR' <$ char '\r') <|>
-     (LF' <$ char '\n') <|>
-     (DoubleQuote <$ quoteQuote)) <*
-  char '"'
-
-quoteQuote :: CharParsing m => m String
-quoteQuote = string "\"\""
+    ((_TextDataC <#> textDataP) <|> (_Comma' <# commaP) <|> (_CR' <# char '\r') <|>
+     (_LF' <# char '\n') <|>
+     (_DoubleQuote <# string "\"\"")) <* char '"'
 
 nonEscapedP :: (CharParsing f, Monad f) => f [TextData]
 nonEscapedP = many textDataP
@@ -65,8 +69,17 @@ commaP = char ','
 
 newlineP :: CharParsing f => f EOL
 newlineP =
-  (try (string "\r\n") $> CRLF) <|> (char '\r' $> CR) <|> (char '\n' $> LF)
+  (try (string "\r\n") #> _CRLF) <|> (char '\r' #> _CR) <|> (char '\n' #> _LF)
 
 sepBy1NE :: Alternative m => m a -> m sep -> m (NonEmpty a)
 sepBy1NE p sep = (:|) <$> p <*> many (sep *> p)
 {-# INLINE sepBy1NE #-}
+
+(<#>) :: Functor f => AReview a b -> f b -> f a
+l <#> c = (l #) <$> c
+
+(<#) :: Functor f => AReview a () -> f b -> f a
+l <# c = (l # ()) <$ c
+
+(#>) :: Functor f => f a -> AReview b () -> f b
+c #> l = c $> (l # ())

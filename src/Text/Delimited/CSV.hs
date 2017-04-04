@@ -2,22 +2,41 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-module Text.Delimited.CSV where
+{-# LANGUAGE TemplateHaskell        #-}
+module Text.Delimited.CSV
+  (
+    CSV, csvRows,
+    Record, recordFields,
+    EOL, _CRLF, _CR, _LF,
+    Field, _Quoted, _Unquoted,
+    QuotedData, _TextDataC, _Comma', _CR', _LF', _DoubleQuote,
+    TextData, _TextData,
+    renderCsv, fieldContent
+  )
+ where
 
 import           Control.Lens
-import           Data.List
-import           Data.List.NonEmpty
-import           Data.Monoid
-import           Text.Trifecta
+import           Data.List          (intercalate)
+import           Data.List.NonEmpty (NonEmpty, toList)
+import           Data.Monoid        ((<>))
+import           Prelude            (Eq, Show)
+import           Prelude            (Char, String)
+import           Prelude            (Maybe (Just, Nothing))
+import           Prelude            (fmap, pure, (=<<), (>>=), ($))
+import           Prelude            ((&&), (<=), (==), (>=), (||))
+import           Text.Trifecta      (Spanned ((:~)))
 
 -- https://tools.ietf.org/html/rfc4180#page-2
 
-data CSV =
-  CSV (NonEmpty (Record, EOL))
+-- $setup
+-- >>> import Data.Char (chr)
+
+newtype CSV =
+  CSV { _csvRows :: NonEmpty (Record, EOL) }
   deriving (Eq, Show)
 
-data Record =
-  Record (Spanned (NonEmpty (Spanned Field)))
+newtype Record =
+  Record { _recordFields :: Spanned (NonEmpty (Spanned Field)) }
   deriving (Eq, Show)
 
 data EOL
@@ -31,17 +50,6 @@ data Field
   | Unquoted [TextData]
   deriving (Eq, Show)
 
--- | Extract un-escaped field content
-fieldContent :: Field -> String
-fieldContent (Quoted cs) =
-  let f (TextDataC td) = _TextData # td
-      f Comma'         = ','
-      f CR'            = '\r'
-      f LF'            = '\n'
-      f DoubleQuote         = '"'
-  in fmap f cs
-fieldContent (Unquoted tds) = fmap (_TextData #) tds
-
 data QuotedData
   = TextDataC TextData
   | Comma'
@@ -54,6 +62,19 @@ newtype TextData =
   TextData Char
   deriving (Eq, Show)
 
+makeLenses ''CSV
+makeLenses ''Record
+makePrisms ''EOL
+makePrisms ''Field
+makePrisms ''QuotedData
+
+-- | Valid csv characters
+-- >>> [chr 0x20, chr 0x21] ^.. traverse . _TextData
+-- [TextData ' ',TextData '!']
+-- >>> lengthOf (traverse . _TextData) "#$%&'()*+"
+-- 9
+-- >>> (0x7e - 0x2d + 1) == lengthOf (traverse . _TextData) (fmap chr [0x2d..0x7e])
+-- True
 _TextData :: Prism' Char TextData
 _TextData =
   prism'
@@ -65,10 +86,21 @@ _TextData =
   where
     -- Valid CSV characters according to:
     -- https://tools.ietf.org/html/rfc4180#page-2
+    -- TEXTDATA =  %x20-21 / %x23-2B / %x2D-7E
     f c =
       c == ' ' ||
       c == '!' ||
       (c >= '#' && c <= '+') || (c >= '-' && c <= '~')
+
+fieldContent :: Field -> String
+fieldContent (Quoted cs) =
+  let f (TextDataC td) = _TextData # td
+      f Comma'         = ','
+      f CR'            = '\r'
+      f LF'            = '\n'
+      f DoubleQuote    = '"'
+  in fmap f cs
+fieldContent (Unquoted tds) = fmap (_TextData #) tds
 
 -- | Render CSV
 -- Should obey: `renderCSV . parseCSV ≅ id`
@@ -83,7 +115,7 @@ renderCsv (CSV records) = toList records >>= printRecord
     printField (Quoted content :~ _) = '"' : (=<<) printQuotedData content <> ['"']
     printField (Unquoted content :~ _) = fmap (_TextData #) content
     printQuotedData (TextDataC textdata) = pure $ _TextData # textdata
-    printQuotedData DoubleQuote               = "\"\""
+    printQuotedData DoubleQuote          = "\"\""
     printQuotedData Comma'               = pure ','
     printQuotedData CR'                  = pure '\r'
     printQuotedData LF'                  = pure '\n'
