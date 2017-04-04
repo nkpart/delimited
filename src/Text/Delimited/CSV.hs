@@ -16,6 +16,8 @@ module Text.Delimited.CSV
  where
 
 import           Control.Lens
+import           Data.CharSet       (CharSet, empty, member, range,
+                                           singleton, union)
 import           Data.List          (intercalate)
 import           Data.List.NonEmpty (NonEmpty, toList)
 import           Data.Monoid        ((<>))
@@ -23,7 +25,7 @@ import           Prelude            (Eq, Show)
 import           Prelude            (Char, String)
 import           Prelude            (Maybe (Just, Nothing))
 import           Prelude            (fmap, pure, ($), (=<<), (>>=))
-import           Prelude            ((&&), (<=), (==), (>=), (||))
+import           Prelude            (foldr)
 import           Text.Trifecta      (Span)
 
 -- https://tools.ietf.org/html/rfc4180#page-2
@@ -31,13 +33,15 @@ import           Text.Trifecta      (Span)
 -- $setup
 -- >>> import Data.Char (chr)
 
-newtype CSV =
-  CSV { _csvRows :: NonEmpty Record }
-  deriving (Eq, Show)
+newtype CSV = CSV
+  { _csvRows :: NonEmpty Record
+  } deriving (Eq, Show)
 
-data Record =
-  Record { _recordSpan :: Span,  _recordFields :: NonEmpty (Span, Field), _recordEOL :: EOL }
-  deriving (Eq, Show)
+data Record = Record
+  { _recordSpan   :: Span
+  , _recordFields :: NonEmpty (Span, Field)
+  , _recordEOL    :: EOL
+  } deriving (Eq, Show)
 
 data EOL
   = CRLF
@@ -87,10 +91,15 @@ _TextData =
     -- Valid CSV characters according to:
     -- https://tools.ietf.org/html/rfc4180#page-2
     -- TEXTDATA =  %x20-21 / %x23-2B / %x2D-7E
-    f c =
-      c == ' ' ||
-      c == '!' ||
-      (c >= '#' && c <= '+') || (c >= '-' && c <= '~')
+    f c = member c textDataCS
+
+textDataCS :: CharSet
+textDataCS =
+  foldr union empty
+  [singleton ' ',
+   singleton '!',
+   range '#' '+',
+   range '-' '~']
 
 fieldContent :: Field -> String
 fieldContent (Quoted cs) =
