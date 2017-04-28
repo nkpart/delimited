@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes                #-}
-{-# LANGUAGE StandaloneDeriving        #-}
 module Text.Delimited.CSV.Parser where
 
 import           Control.Applicative
@@ -18,7 +17,6 @@ import           Text.Trifecta
 -- >>>
 
 -- https://tools.ietf.org/html/rfc4180#page-2
-
 fileP
   :: (Monad m, DeltaParsing m)
   => m CSV
@@ -27,16 +25,16 @@ fileP = do
   rs <- many recordP
   pure $ csvRows # (h :| rs)
 
-headerP :: DeltaParsing f => f Record
+headerP :: DeltaParsing f => f (Record Span)
 headerP =
-     makeRecord <$> spanned (sepBy1NE (spanned nameP) commaP) <*> newlineP
+     recordP
 
-recordP :: DeltaParsing f => f Record
+recordP :: DeltaParsing f => f (Record Span)
 recordP =
-     makeRecord <$> spanned (sepBy1NE (spanned nameP) commaP) <*> newlineP
+     makeRecord <$> spanned (sepBy1NE (spanned field) commaP) <*> newlineP
 
-makeRecord :: Spanned (NonEmpty (Spanned Field)) -> EOL -> Record
-makeRecord (fields :~ sp) eol = Record sp (fmap (\(fld :~ s) -> (s, fld)) fields) eol
+makeRecord :: Spanned (NonEmpty (Spanned Field)) -> EOL -> Record Span
+makeRecord (fields :~ sp) = Record sp (fmap (\(fld :~ s) -> (s, fld)) fields)
 
 nameP :: (Monad f, CharParsing f) => f Field
 nameP = field
