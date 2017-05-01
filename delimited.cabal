@@ -24,6 +24,7 @@ library
                      , free
                      , lens
                      , charset
+                     , delimited
                      -- , separated
   default-language:    Haskell2010
 

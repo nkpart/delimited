@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE StandaloneDeriving        #-}
+{-# LANGUAGE TemplateHaskell           #-}
 
 module Text.Delimited.CSV
   ( CSV
@@ -18,6 +18,7 @@ module Text.Delimited.CSV
   , Field
   , _Quoted
   , _Unquoted
+  , makeField
   , QuotedData
   , _TextDataC
   , _Comma'
@@ -30,20 +31,22 @@ module Text.Delimited.CSV
   , fieldContent
   ) where
 
-import Control.Lens
-import Data.CharSet
-       (CharSet, empty, member, range, singleton, union)
-import Data.List (intercalate)
-import Data.List.NonEmpty (NonEmpty, toList)
-import Data.Monoid ((<>))
-import Prelude (Eq, Show, Char, String, Maybe(Just, Nothing), fmap, pure, ($), (=<<), (>>=), foldr)
-import Text.Trifecta (Span)
+import           Control.Applicative ((<$>), (<|>))
+import           Control.Lens
+import           Data.CharSet        (CharSet, empty, member, range, singleton,
+                                      union)
+import           Data.List           (intercalate)
+import           Data.List.NonEmpty  (NonEmpty, toList)
+import           Data.Monoid         ((<>))
+import           Prelude             (Char, Eq, Maybe (Just, Nothing), Show,
+                                      String, fmap, foldr, pure, ($), (=<<),
+                                      (>>=))
+import           Text.Trifecta       (Span)
 
 -- https://tools.ietf.org/html/rfc4180#page-2
 -- $setup
 -- >>> import Data.Char (chr)
 -- >>> import Prelude
-
 type CSV = CSV' Span
 
 newtype CSV' ann = CSV
@@ -51,9 +54,9 @@ newtype CSV' ann = CSV
   } deriving (Eq, Show)
 
 data Record ann = Record
-  { _recordAnn :: ann
+  { _recordAnn    :: ann
   , _recordFields :: NonEmpty (ann, Field)
-  , _recordEOL :: EOL
+  , _recordEOL    :: EOL
   } deriving (Eq, Show)
 
 data EOL
@@ -110,16 +113,41 @@ _TextData =
   where
     f c = member c textDataCS
 
+-- | Can encode a char into quoted data, and decode.
+-- This is inappropriate for parsing, as we need to use up 2 double quotes when parsing them. However,
+-- it's a useful function when constructing records from scratch.
+_QuotedData :: Prism' Char QuotedData
+_QuotedData =
+  prism'
+    (\v ->
+       case v of
+         TextDataC (TextData c) -> c
+         Comma'                 -> ','
+         LF'                    -> '\n'
+         CR'                    -> '\r'
+         DoubleQuote            -> '"')
+    (\c -> (TextDataC `fmap` (c ^? _TextData)) <|> checkIt c)
+  where
+    checkIt ','  = Just Comma'
+    checkIt '\n' = Just LF'
+    checkIt '\r' = Just CR'
+    checkIt '"'  = Just DoubleQuote
+    checkIt _    = Nothing
+
+makeField :: String -> Maybe Field
+-- TODO: can we do this in one pass?
+makeField c = (Unquoted <$> traverse (preview _TextData) c) <|> (Quoted <$> traverse (preview _QuotedData) c)
+
 textDataCS :: CharSet
 textDataCS = foldr union empty [singleton ' ', singleton '!', range '#' '+', range '-' '~']
 
 fieldContent :: Field -> String
 fieldContent (Quoted cs) =
   let f (TextDataC td) = _TextData # td
-      f Comma' = ','
-      f CR' = '\r'
-      f LF' = '\n'
-      f DoubleQuote = '"'
+      f Comma'         = ','
+      f CR'            = '\r'
+      f LF'            = '\n'
+      f DoubleQuote    = '"'
   in fmap f cs
 fieldContent (Unquoted tds) = fmap (_TextData #) tds
 
@@ -130,12 +158,12 @@ renderCsv (CSV records) = toList records >>= printRecord
   where
     printRecord (Record _ fields eol) = intercalate "," (toList $ fmap printField fields) <> printEol eol
     printEol CRLF = "\r\n"
-    printEol CR = "\r"
-    printEol LF = "\n"
+    printEol CR   = "\r"
+    printEol LF   = "\n"
     printField (_, Quoted content) = '"' : (=<<) printQuotedData content <> ['"']
     printField (_, Unquoted content) = fmap (_TextData #) content
     printQuotedData (TextDataC textdata) = pure $ _TextData # textdata
-    printQuotedData DoubleQuote = "\"\""
-    printQuotedData Comma' = pure ','
-    printQuotedData CR' = pure '\r'
-    printQuotedData LF' = pure '\n'
+    printQuotedData DoubleQuote          = "\"\""
+    printQuotedData Comma'               = pure ','
+    printQuotedData CR'                  = pure '\r'
+    printQuotedData LF'                  = pure '\n'
