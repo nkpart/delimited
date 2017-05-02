@@ -9,25 +9,25 @@
 module Text.Delimited.CSV
   ( CSV
   , csvRows
-  , Record(Record)
+  , Record(..)
   , recordAnn
   , recordFields
   , recordEOL
-  , EOL
+  , EOL(..)
   , _CRLF
   , _CR
   , _LF
-  , Field
+  , Field(..)
   , _Quoted
   , _Unquoted
   , makeField
-  , QuotedData
+  , QuotedData(..)
   , _TextDataC
   , _Comma'
   , _CR'
   , _LF'
   , _DoubleQuote
-  , TextData
+  , TextData(..)
   , _TextData
   , renderCsv
   , fieldContent
