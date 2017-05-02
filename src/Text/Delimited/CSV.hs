@@ -1,4 +1,6 @@
+{-# LANGUAGE DeriveDataTypeable        #-}
 {-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE LambdaCase                #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE StandaloneDeriving        #-}
@@ -35,6 +37,7 @@ import           Control.Applicative ((<$>), (<|>))
 import           Control.Lens
 import           Data.CharSet        (CharSet, empty, member, range, singleton,
                                       union)
+import           Data.Data
 import           Data.List           (intercalate)
 import           Data.List.NonEmpty  (NonEmpty, toList)
 import           Data.Monoid         ((<>))
@@ -51,24 +54,24 @@ type CSV = CSV' Span
 
 newtype CSV' ann = CSV
   { _csvRows :: NonEmpty (Record ann)
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Data, Typeable)
 
 data Record ann = Record
   { _recordAnn    :: ann
   , _recordFields :: NonEmpty (ann, Field)
   , _recordEOL    :: EOL
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Data, Typeable)
 
 data EOL
   = CRLF
   | CR
   | LF
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data, Typeable)
 
 data Field
   = Quoted [QuotedData]
   | Unquoted [TextData]
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data, Typeable)
 
 data QuotedData
   = TextDataC TextData
@@ -76,11 +79,11 @@ data QuotedData
   | CR'
   | LF'
   | DoubleQuote
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data, Typeable)
 
 newtype TextData =
   TextData Char
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data, Typeable)
 
 makeLenses ''CSV'
 
