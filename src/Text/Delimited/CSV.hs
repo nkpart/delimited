@@ -153,7 +153,7 @@ fieldContent (Unquoted tds) = fmap (_TextData #) tds
 
 -- | Render CSV
 -- Should obey: `renderCSV . parseCSV ≅ id`
-renderCsv :: CSV -> String
+renderCsv :: CSV' a -> String
 renderCsv (CSV records) = toList records >>= printRecord
   where
     printRecord (Record _ fields eol) = intercalate "," (toList $ fmap printField fields) <> printEol eol
